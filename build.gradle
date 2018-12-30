@@ -36,4 +36,9 @@ dependencies {
 
     compile 'junit:junit:4.12'
 }
+compileKotlin {
+    kotlinOptions {
+        languageVersion = "1.3"
+    }
+}
 

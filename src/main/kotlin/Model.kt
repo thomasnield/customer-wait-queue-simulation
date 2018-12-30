@@ -1,31 +1,22 @@
-import org.ojalgo.matrix.PrimitiveMatrix
-import org.ojalgo.okalgo.populate
-import org.ojalgo.okalgo.primitivematrix
-import org.ojalgo.okalgo.times
+import org.ojalgo.random.Poisson
 
-/**
- * x + y = 240
- * 2x + y = 320
- *
- * Ax = b
- * x = A`b
- */
+val scenarioDuration = 2 //hours
+val customerAvgArrivalRate =  50 // customers per hour
+val customerAvgProcessingRate = 3 // minutes per customer
+
+
+// model distribution converted into minutes
+val arrivalDistribution = Poisson(50.0 / 60.0)
+
+val processingDistribution  = Poisson(3.0)
 
 fun main(args: Array<String>) {
 
-    val a = primitivematrix(2,3) {
-        populate(
-                1.0, 1.0, 10.0,
-                2.0, 1.0, 20
-        )
-    }
+    arrivalDistribution.getProbability(1).let(::println)
 
-    val b = primitivematrix(2,1) {
-        populate(
-                240.0,
-                320.0
-        )
-    }
 
-    println(a.invert() * b)
+}
+
+
+class Frame(val hour: Int) {
 }
