@@ -2,19 +2,18 @@ import org.ojalgo.random.Poisson
 
 val scenarioDuration = 2 //hours
 val customerAvgArrivalRate =  50 // customers per hour
-val customerAvgProcessingRate = 3 // minutes per customer
+val customerAvgProcessingRate = 5 // minutes per customer
 
 
-// model distribution converted into minutes
-val arrivalDistribution = Poisson(50.0 / 60.0)
-
-val processingDistribution  = Poisson(3.0)
+val arrivalDistribution = Poisson(customerAvgArrivalRate.toDouble() / 60.0) // convert from hours to minutes
+val processingDistribution  = Poisson(customerAvgProcessingRate.toDouble())
 
 fun main(args: Array<String>) {
 
-    arrivalDistribution.getProbability(1).let(::println)
-
-
+    // this is working! approx 50 customers per hour
+    (0 until 6000).asSequence().map { arrivalDistribution.get() }
+            .let { it.sum().toDouble() / 100.0 }
+            .let(::println)
 }
 
 
