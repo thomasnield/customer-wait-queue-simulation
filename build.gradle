@@ -33,6 +33,7 @@ dependencies {
 
     compile 'org.ojalgo:ojalgo:47.0.0'
     implementation 'com.github.optimatika:okAlgo:06e7e8'
+    implementation 'no.tornado:tornadofx:1.7.18'
 
     compile 'junit:junit:4.12'
 }
