@@ -19,7 +19,7 @@ fun main(args: Array<String>) {
                 frm
             }
             .forEach {
-                println("${it.minute} arriving=${ it.arrivingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",") } " +
+                println("minute=${it.minute} arriving=${ it.arrivingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",") } " +
                         "serving=${it.servingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} " +
                         "waiting=${it.waitingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} ")
             }
