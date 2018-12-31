@@ -1,29 +1,35 @@
 import org.ojalgo.random.Poisson
 
-val scenarioDuration = 2 //hours
-val customerAvgArrivalRate =  30 // customers per hour
-val customerAvgProcessingTime = 5 // minutes per customer
-val tellerCount = 3
-
-val arrivalDistribution = Poisson(customerAvgArrivalRate.toDouble() / 60.0) // convert from hours to minutes
-val processingDistribution  = Poisson(customerAvgProcessingTime.toDouble())
 
 fun main(args: Array<String>) {
 
-    var lastFrame: Frame? = null
+    Simulation(
+            scenarioDuration = 120,
+            customersPerHour = 30,
+            processingTimePerCustomer = 5,
+            tellerCount = 3
+    ).execute().forEach { println(it) }
 
-    (1..(scenarioDuration*60))
-            .map {
-                val frm = Frame(it, lastFrame)
-                lastFrame = frm
-                frm
-            }
-            .forEach {
-                println("minute=${it.minute} arriving=${ it.arrivingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",") } " +
-                        "serving=${it.servingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} " +
-                        "waiting=${it.waitingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} ")
-            }
 }
+
+class Simulation(val scenarioDuration: Int, customersPerHour: Int, processingTimePerCustomer: Int, val tellerCount: Int) {
+
+    val arrivalDistribution = Poisson(customersPerHour.toDouble() / 60.0) // convert from hours to minutes
+    val processingDistribution  = Poisson(processingTimePerCustomer.toDouble())
+
+    fun execute(): List<Frame> {
+        var lastFrame: Frame? = null
+
+        return (1..(scenarioDuration))
+                .map {
+                    val frm = Frame(it, lastFrame, this)
+                    lastFrame = frm
+                    frm
+                }
+                .toList()
+    }
+}
+
 
 /**
  * A Customer assigns its own ID and processing time
@@ -31,7 +37,7 @@ fun main(args: Array<String>) {
 class Customer(val arrivalFrame: Frame) {
 
     val id: Int = customerIndexer++
-    val processingTime: Int = processingDistribution.get().toInt()
+    val processingTime: Int = arrivalFrame.simulation.processingDistribution.get().toInt()
 
     companion object {
         private var customerIndexer = 0
@@ -41,7 +47,7 @@ class Customer(val arrivalFrame: Frame) {
     }
 }
 
-class Frame(val minute: Int, val previousFrame: Frame? = null) {
+class Frame(val minute: Int, val previousFrame: Frame? = null, val simulation: Simulation) {
 
     val traverseBackwards = generateSequence(this) { it.previousFrame }
 
@@ -60,11 +66,15 @@ class Frame(val minute: Int, val previousFrame: Frame? = null) {
     }
 
     val arrivingCustomers by lazy {
-        (0 until arrivalDistribution.get().toInt())
+        (0 until simulation.arrivalDistribution.get().toInt())
                 .map { Customer(this) }
                 .toList()
     }
-    val servingCustomers: List<Customer> by lazy {  carryOverServingCustomers.plus(carryOverWaitingCustomers).plus(arrivingCustomers).take(tellerCount) }
+    val servingCustomers: List<Customer> by lazy {
+        carryOverServingCustomers
+                .plus(carryOverWaitingCustomers)
+                .plus(arrivingCustomers)
+                .take(simulation.tellerCount) }
 
     // track how long each serving customer has been delayed
     val servingCustomerWaitTimes by lazy {
@@ -77,5 +87,9 @@ class Frame(val minute: Int, val previousFrame: Frame? = null) {
     val waitingCustomers by lazy  { carryOverWaitingCustomers.plus(arrivingCustomers).minus(servingCustomers) }
 
 
-    override fun toString() = "Frame(minute=$minute)"
+    override fun toString() = let {
+        "Frame(minute=${it.minute} arriving=${it.arrivingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} " +
+                "serving=${it.servingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} " +
+                "waiting=${it.waitingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")})"
+    }
 }
