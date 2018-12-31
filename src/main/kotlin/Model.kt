@@ -1,7 +1,7 @@
 import org.ojalgo.random.Poisson
 
 val scenarioDuration = 2 //hours
-val customerAvgArrivalRate =  50 // customers per minute
+val customerAvgArrivalRate =  30 // customers per hour
 val customerAvgProcessingTime = 5 // minutes per customer
 val tellerCount = 3
 
@@ -43,11 +43,13 @@ class Customer(val arrivalFrame: Frame) {
 
 class Frame(val minute: Int, val previousFrame: Frame? = null) {
 
+    val traverseBackwards = generateSequence(this) { it.previousFrame }
+
     val carryOverServingCustomers: List<Customer> by lazy {
         if (previousFrame == null)
             listOf()
         else
-            previousFrame.servingCustomers.filter { (minute - it.arrivalFrame.minute) < it.processingTime }
+            previousFrame.servingCustomers.filter { (minute - (it.arrivalFrame.minute + (previousFrame?.servingCustomerWaitTimes[it.id]?:0) ) ) < it.processingTime }
     }
 
     val carryOverWaitingCustomers: List<Customer> by lazy {
@@ -62,9 +64,18 @@ class Frame(val minute: Int, val previousFrame: Frame? = null) {
                 .map { Customer(this) }
                 .toList()
     }
-    val servingCustomers: List<Customer> = carryOverServingCustomers.plus(carryOverWaitingCustomers).plus(arrivingCustomers).take(tellerCount)
+    val servingCustomers: List<Customer> by lazy {  carryOverServingCustomers.plus(carryOverWaitingCustomers).plus(arrivingCustomers).take(tellerCount) }
 
-    val waitingCustomers = carryOverWaitingCustomers.plus(arrivingCustomers).minus(servingCustomers)
+    // track how long each serving customer has been delayed
+    val servingCustomerWaitTimes by lazy {
+        servingCustomers.map { cust ->
+            cust.id to traverseBackwards.count { cust in it.waitingCustomers}
+        }.toMap()
+
+    }
+
+    val waitingCustomers by lazy  { carryOverWaitingCustomers.plus(arrivingCustomers).minus(servingCustomers) }
+
 
     override fun toString() = "Frame(minute=$minute)"
 }
