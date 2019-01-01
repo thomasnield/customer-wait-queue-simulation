@@ -1,6 +1,6 @@
 # Poisson Optimizer and Simulator
 
-Using poisson distribution to simulate staffing headcount decisions and impact on wait times.
+Using poisson distribution to simulate staffing headcount decisions and impact on wait times. Blog post/video coming soon.
 
 ## Abstract
 
