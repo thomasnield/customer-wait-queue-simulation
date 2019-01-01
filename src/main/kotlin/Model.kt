@@ -69,11 +69,18 @@ class Frame(val minute: Int, val previousFrame: Frame? = null, val simulation: S
                 .map { Customer(this) }
                 .toList()
     }
-    val servingCustomers: List<Customer> by lazy {
+    val servingCustomers by lazy {
         carryOverServingCustomers
                 .plus(carryOverWaitingCustomers)
                 .plus(arrivingCustomers)
-                .take(simulation.tellerCount) }
+                .take(simulation.tellerCount)
+    }
+
+    val movingCustomers by lazy {
+        previousFrame?.servingCustomers?.let { prevServing ->
+            servingCustomers.filter { it !in prevServing }
+        }?: listOf()
+    }
 
     // track how long each serving customer has been delayed
     val servingCustomerWaitTimes by lazy {

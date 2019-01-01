@@ -1,6 +1,7 @@
 import javafx.animation.SequentialTransition
 import javafx.animation.Timeline
 import javafx.application.Application
+import javafx.beans.property.SimpleIntegerProperty
 import javafx.scene.layout.Pane
 import javafx.scene.paint.Color
 import javafx.scene.shape.Circle
@@ -13,7 +14,7 @@ fun main(args:Array<String>) = Application.launch(AnimationApp::class.java, *arg
 class AnimationApp: App(AnimationView::class)
 
 val edgeTop = 100.0
-val edgeLeft = 200.0
+val edgeLeft = 250.0
 val radius = 10.0
 val lobbyHeight = 200.0
 
@@ -21,16 +22,13 @@ val lobbyHeight = 200.0
 val deskWidth = 60.0
 val deskHeight = 30.0
 
-val centerX = edgeLeft + ((3 * 200.0) * (1.0/3.0))
-
-val queueStartX =  centerX
+val queueStartX =  edgeLeft + 400.0
 
 operator fun SequentialTransition.plusAssign(timeline: Timeline) { children.add(timeline) }
 
 
 class AnimationView: View() {
 
-    val animationQueue = SequentialTransition()
 
     override val root = borderpane {
 
@@ -40,11 +38,14 @@ class AnimationView: View() {
 
             val simulation = Simulation(
                             scenarioDuration = 120,
-                            customersPerHour = 300,
+                            customersPerHour = 30,
                             processingTimePerCustomer = 5,
-                            tellerCount = 3)
+                            tellerCount = 3
+            ).also {
+                it.frames.forEach(::println)
+            }
 
-            generateSequence { SimulationFX(simulation, this) }.first { it.simulation.frames.first().arrivingCustomers.count() >= 2 }.animate()
+            SimulationFX(simulation, this).animate()
 
         }
     }
@@ -53,23 +54,63 @@ class AnimationView: View() {
 class SimulationFX(val simulation: Simulation, val pane: Pane) {
 
     val animationQueue = SequentialTransition()
+    val minuteNumberFx = SimpleIntegerProperty(0)
+    val arrivingNumberFx = SimpleIntegerProperty(0)
+    val servingNumberFx = SimpleIntegerProperty(0)
+    val waitingNumberFx = SimpleIntegerProperty(0)
+    val maxWaitingNumberFx = SimpleIntegerProperty(0)
+    val maxWaitingTimeFx = SimpleIntegerProperty(0)
+    val avgWaitingTimeFx = SimpleIntegerProperty(0)
 
     val desks = (1..simulation.tellerCount).map {
         TellerFX(it).also { pane += it }
     }.toList()
 
-    val waitingCustomers = mutableListOf<CustomerFX>()
-    val processingCustomers = mutableListOf<CustomerFX>()
-
-    fun arriveCustomer(customerFX: CustomerFX) {
-        customerFX.moveToQueueIndex(waitingCustomers.size)
-    }
     fun animate()  {
+
+        pane.form {
+            fieldset("SCENARIO") {
+                field("MINUTE") {
+                     label(minuteNumberFx)
+                }
+                field("ARRIVING") {
+                    label(arrivingNumberFx)
+                }
+                field("SERVING") {
+                    label(servingNumberFx)
+                }
+                field("WAITING") {
+                    label(waitingNumberFx)
+                }
+            }
+            fieldset("PERFORMANCE") {
+                field("MAX WAITING CT") {
+                    label(maxWaitingNumberFx)
+                }
+                field("MAX WAITING TIME") {
+                    label(maxWaitingTimeFx)
+                }
+                field("AVG WAITING TIME") {
+                    label(avgWaitingTimeFx)
+                }
+            }
+        }
 
         val customerFxCache = mutableMapOf<Int,CustomerFX>()
 
-        simulation.frames.asSequence().take(1).forEach { frame ->
+        simulation.frames.asSequence().forEach { frame ->
 
+            animationQueue += timeline(play=false) {
+                keyframe(if (frame.movingCustomers.size == 0) 1.seconds else 1.millis) {
+                    keyvalue(minuteNumberFx, frame.minute)
+                    keyvalue(servingNumberFx, frame.servingCustomers.count())
+                    keyvalue(waitingNumberFx, frame.waitingCustomers.count())
+                    keyvalue(arrivingNumberFx, frame.arrivingCustomers.count())
+                    keyvalue(maxWaitingNumberFx, frame.traverseBackwards.map { it.waitingCustomers.count() }.max()?:0)
+                    keyvalue(maxWaitingTimeFx, frame.traverseBackwards.flatMap { it.servingCustomerWaitTimes.values.map { it }.asSequence() }.max()?:0)
+                    keyvalue(avgWaitingTimeFx, frame.traverseBackwards.flatMap { it.servingCustomerWaitTimes.entries.asSequence() }.distinctBy { it.key }.map { it.value }.average())
+                }
+            }
             // handle customers leaving
             frame.departingCustomers.asSequence()
                     .map { customerFxCache[it.id]!! }
@@ -78,19 +119,28 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
             // handle customer arrivals
             val arrivingCustomers = frame.arrivingCustomers.asSequence()
                     .mapIndexed { index, customer ->
-                        customerFxCache.computeIfAbsent(customer.id) { CustomerFX(customer, waitingCustomers.size + index, this) }
-                               .also { pane += it }
+                        customerFxCache.computeIfAbsent(customer.id) { CustomerFX(customer, frame.waitingCustomers.size + index, this) }
+                               .also {
+                                   pane += it
+                                   it.animateQueueIndexChange()
+                               }
                     }.toList()
 
-            // if no line, arriving customers go straight to desk
-            arrivingCustomers.forEach {
-                it.animateQueueIndexChange()
-                if (it.customer in frame.servingCustomers && desks.any { it.currentCustomerFX == null }) {
-                    it.moveToDesk(desks.shuffled().first { it.currentCustomerFX == null })
-                    it.leave()
-                }
-            }
+            val customersToMove = frame.movingCustomers.asSequence()
+                    .map { customerFxCache[it.id]!! }
+                    .toList()
 
+            // arriving customers who are immediately served go straight to desk
+            customersToMove.forEach { movingCustomer ->
+
+                movingCustomer.moveToDesk(desks.first { it.currentCustomerFX == null })
+
+                customerFxCache.values.asSequence()
+                        .filter { it.currentIndex >= 0 && it.customer.id > movingCustomer.customer.id }
+                        .forEach {
+                            it.moveUpQueue()
+                        }
+            }
 
             // send serving customers to desk (if not already)
             val servingCustomers = frame.servingCustomers.asSequence()
@@ -109,16 +159,12 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
         animationQueue.play()
 
     }
-
-    fun moveQueue() {
-        waitingCustomers.forEach { it.moveUpQueue() }
-    }
 }
 
 class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationFX: SimulationFX): Circle() {
 
-    private var currentIndex: Int = startingIndex.also { println(it) }
-    private var currentTeller: TellerFX? = null
+    var currentIndex: Int = startingIndex
+    var currentTeller: TellerFX? = null
 
     init {
         radius = 10.0
@@ -155,6 +201,7 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
     }
 
     fun moveToDesk(tellerFX: TellerFX) {
+        currentIndex--
         currentTeller = tellerFX
         tellerFX.currentCustomerFX = this
 
@@ -163,12 +210,8 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
                 keyvalue(centerXProperty(), (currentTeller?.x?:0.0) + (deskWidth*.5))
                 keyvalue(centerYProperty(), (currentTeller?.y?:0.0) + (deskHeight * 1.25))
             }
-            simulationFX.waitingCustomers.asSequence()
-                    .filter { it.customer.id > customer.id }
-                    .forEach {
-                        it.moveUpQueue()
-                    }
         }
+
     }
 
     fun leave() {
@@ -183,7 +226,7 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
     }
 }
 
-class TellerFX(val startingPosition: Int): Rectangle() {
+class TellerFX(val position: Int): Rectangle() {
 
     var currentCustomerFX: CustomerFX? = null
 
@@ -192,6 +235,6 @@ class TellerFX(val startingPosition: Int): Rectangle() {
         height = deskHeight
         fill = Color.BROWN
         y = edgeTop
-        x = (startingPosition * 200.0) - radius
+        x = edgeLeft + (position * 200.0) - radius
     }
 }
