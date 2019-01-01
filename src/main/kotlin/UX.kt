@@ -38,7 +38,7 @@ class AnimationView: View() {
 
             val simulation = Simulation(
                             scenarioDuration = 120,
-                            customersPerHour = 30,
+                            customersPerHour = 70,
                             processingTimePerCustomer = 5,
                             tellerCount = 3
             ).also {
@@ -98,6 +98,8 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
 
         val customerFxCache = mutableMapOf<Int,CustomerFX>()
 
+        var queueSize = 0
+
         simulation.frames.asSequence().forEach { frame ->
 
             animationQueue += timeline(play=false) {
@@ -119,10 +121,9 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
             // handle customer arrivals
             val arrivingCustomers = frame.arrivingCustomers.asSequence()
                     .mapIndexed { index, customer ->
-                        customerFxCache.computeIfAbsent(customer.id) { CustomerFX(customer, frame.waitingCustomers.size + index, this) }
+                        customerFxCache.computeIfAbsent(customer.id) { CustomerFX(customer, queueSize++, this) }
                                .also {
                                    pane += it
-                                   it.animateQueueIndexChange()
                                }
                     }.toList()
 
@@ -134,27 +135,15 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
             customersToMove.forEach { movingCustomer ->
 
                 movingCustomer.moveToDesk(desks.first { it.currentCustomerFX == null })
+                queueSize--
 
                 customerFxCache.values.asSequence()
-                        .filter { it.currentIndex >= 0 && it.customer.id > movingCustomer.customer.id }
+                        .filter { it.currentTeller == null }
                         .forEach {
                             it.moveUpQueue()
                         }
             }
 
-            // send serving customers to desk (if not already)
-            val servingCustomers = frame.servingCustomers.asSequence()
-                    .map { customerFxCache[it.id]!!}
-                    .toList()
-
-            servingCustomers.forEach { customerFx ->
-                 val notAtDesk = desks.none { it.currentCustomerFX == customerFx  }
-
-                 if (notAtDesk) {
-                     val desk = desks.first { it.currentCustomerFX == null }
-                     customerFx.moveToDesk(desk)
-                 }
-            }
         }
         animationQueue.play()
 
@@ -195,11 +184,6 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
             }
         }
     }
-    fun moveToQueueIndex(index: Int) {
-        currentIndex = index
-        animateQueueIndexChange()
-    }
-
     fun moveToDesk(tellerFX: TellerFX) {
         currentIndex--
         currentTeller = tellerFX
