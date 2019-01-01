@@ -38,8 +38,8 @@ class AnimationView: View() {
 
             val simulation = Simulation(
                             scenarioDuration = 120,
-                            customersPerHour = 70,
-                            processingTimePerCustomer = 5,
+                            customersPerHour = 50,
+                            processingTimePerCustomer = 6,
                             tellerCount = 3
             ).also {
                 it.frames.forEach(::println)
@@ -69,6 +69,21 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
     fun animate()  {
 
         pane.form {
+
+            fieldset("PARAMETERS") {
+                field("AVG ARRIVALS/HR") {
+                    label(simulation.customersPerHour.toString())
+                }
+                field("AVG SERVICE TIME (MINS)") {
+                    label(simulation.processingTimePerCustomer .toString())
+                }
+                field("# CLERKS") {
+                    label(simulation.tellerCount.toString())
+                }
+                field("SIMULATION LENGTH (MINS)") {
+                    label(simulation.scenarioDuration .toString())
+                }
+            }
             fieldset("SCENARIO") {
                 field("MINUTE") {
                      label(minuteNumberFx)
@@ -116,14 +131,18 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
             // handle customers leaving
             frame.departingCustomers.asSequence()
                     .map { customerFxCache[it.id]!! }
-                    .forEach { it.leave() }
+                    .forEach {
+                        it.leave()
+                        customerFxCache.remove(it.customer.id)
+                    }
 
             // handle customer arrivals
-            val arrivingCustomers = frame.arrivingCustomers.asSequence()
+            frame.arrivingCustomers.asSequence()
                     .mapIndexed { index, customer ->
                         customerFxCache.computeIfAbsent(customer.id) { CustomerFX(customer, queueSize++, this) }
                                .also {
                                    pane += it
+                                   it.entrance()
                                }
                     }.toList()
 
@@ -160,7 +179,6 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
         centerX = queueStartX + (startingIndex * 24.0) + 400.0
         centerY = edgeTop + lobbyHeight
         opacity = 0.0
-        entrance()
     }
 
     fun entrance() {
@@ -200,9 +218,9 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
 
     fun leave() {
         simulationFX.animationQueue += timeline(play=false)  {
-            keyframe(1.seconds) {
-                keyvalue(centerYProperty(), queueStartX + (startingIndex * 24.0) + (if (ThreadLocalRandom.current().nextInt(0,1) == 1) 200.0 else -200.0))
-                keyvalue(centerXProperty(), edgeTop + lobbyHeight + 200)
+            keyframe(500.millis) {
+                keyvalue(centerYProperty(), (currentTeller?.y?:0.0) + 60.0)
+                keyvalue(centerXProperty(), (currentTeller?.x?:0.0) + if (ThreadLocalRandom.current().nextInt(0,1) == 1) 20.0 else -20.0)
                 keyvalue(opacityProperty(), 0.0)
             }
         }

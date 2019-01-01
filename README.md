@@ -10,7 +10,7 @@ During this period, there is an average of `c` customers per hour. There is also
 
 Create a simulator that accepts these parameters and animates the outcome over a specific period.
 
-I'm going to animate this with JavaFX/TornadoFX soon.
+![](animation.gif)
 
 **Sample Output:**
 

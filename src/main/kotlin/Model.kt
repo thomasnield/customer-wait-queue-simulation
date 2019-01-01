@@ -12,7 +12,7 @@ fun main(args: Array<String>) {
 
 }
 
-class Simulation(val scenarioDuration: Int, customersPerHour: Int, processingTimePerCustomer: Int, val tellerCount: Int) {
+class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val processingTimePerCustomer: Int, val tellerCount: Int) {
 
     val arrivalDistribution = Poisson(customersPerHour.toDouble() / 60.0) // convert from hours to minutes
     val processingDistribution  = Poisson(processingTimePerCustomer.toDouble())
