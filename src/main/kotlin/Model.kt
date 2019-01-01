@@ -1,16 +1,30 @@
+import org.nield.kotlinstatistics.standardDeviation
 import org.ojalgo.random.Poisson
-
 
 fun main(args: Array<String>) {
 
-    Simulation(
-            scenarioDuration = 120,
-            customersPerHour = 20,
-            processingTimePerCustomer = 5,
-            tellerCount = 7
-    ).frames.forEach { println(it) }
-
+    (3..8).asSequence()
+            .map { tellerCount ->
+                (0..100).asSequence()
+                        .map {
+                            Simulation(
+                                    scenarioDuration = 60,
+                                    customersPerHour = 50,
+                                    processingTimePerCustomer = 6,
+                                    tellerCount = tellerCount
+                            )
+                        }.toList()
+            }.forEach {
+                println(
+                        "tellerCount=${it.first().tellerCount} " +
+                                "arrivalCount=${it.map { it.customerArrivalCount }.average()} " +
+                                "servicedCount=${it.map { it.customersServedCount }.average()} " +
+                                "avgWaitTime=${it.asSequence().flatMap { it.waitTimes }.average() } " +
+                                "stdDevWaitTime=${it.asSequence().flatMap { it.waitTimes }.standardDeviation() }"
+                )
+            }
 }
+
 
 class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val processingTimePerCustomer: Int, val tellerCount: Int) {
 
@@ -27,6 +41,14 @@ class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val proce
                     frm
                 }
     }
+
+    val customerArrivalCount get() = frames.asSequence().flatMap { it.arrivingCustomers.asSequence() }.distinct().count()
+    val customersServedCount get() = frames.asSequence().flatMap {  it.servingCustomers.asSequence() }.distinct().count()
+    val maximumQueueSize get() = frames.asSequence().map { it.waitingCustomers.count() }.max()?:0
+    val maxmimumWaitTime get() = frames.asSequence().flatMap {  it.servingCustomerWaitTimes.values.map { it }.asSequence() }.max()?:0
+    val waitTimes get() = frames.asSequence().flatMap {  it.servingCustomerWaitTimes.entries.asSequence() }.distinctBy { it.key }.map { it.value }
+
+
 }
 
 

@@ -10,6 +10,42 @@ The animation was built with JavaFX/TornadoFX.
 
 ![](animation.gif)
 
+
+You can also run hundreds of simulations for each staffing decision, do some statistical analysis with the results, and choose the most acceptable one.
+
+```kotlin
+(3..8).asSequence()
+        .map { tellerCount ->
+            (0..100).asSequence()
+                    .map {
+                        Simulation(
+                                scenarioDuration = 60,
+                                customersPerHour = 50,
+                                processingTimePerCustomer = 6,
+                                tellerCount = tellerCount
+                        )
+                    }.toList()
+        }.forEach {
+            println(
+                    "tellerCount=${it.first().tellerCount} " +
+                            "arrivalCount=${it.map { it.customerArrivalCount }.average()} " +
+                            "servicedCount=${it.map { it.customersServedCount }.average()} " +
+                            "avgWaitTime=${it.asSequence().flatMap { it.waitTimes }.average() } " +
+                            "stdDevWaitTime=${it.asSequence().flatMap { it.waitTimes }.standardDeviation() }"
+            )
+        }
+
+
+        /* OUTPUT:
+        tellerCount=3 arrivalCount=50.43564356435643 servicedCount=30.11881188118812 avgWaitTime=11.070019723865878 stdDevWaitTime=8.558560596655338
+        tellerCount=4 arrivalCount=50.43564356435643 servicedCount=39.00990099009901 avgWaitTime=6.225126903553299 stdDevWaitTime=5.740281198669174
+        tellerCount=5 arrivalCount=48.693069306930695 servicedCount=44.65346534653465 avgWaitTime=2.7210643015521065 stdDevWaitTime=3.6478103085102167
+        tellerCount=6 arrivalCount=50.415841584158414 servicedCount=49.13861386138614 avgWaitTime=1.2689905299214186 stdDevWaitTime=2.068160271598765
+        tellerCount=7 arrivalCount=49.04950495049505 servicedCount=48.65346534653465 avgWaitTime=0.40944240944240945 stdDevWaitTime=1.0266350957498867
+        tellerCount=8 arrivalCount=50.633663366336634 servicedCount=50.34653465346535 avgWaitTime=0.2597836774827925 stdDevWaitTime=0.7868692461096295
+        */
+```
+
 **Sample Output:**
 
 ```

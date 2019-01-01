@@ -37,10 +37,10 @@ class AnimationView: View() {
         center = pane {
 
             val simulation = Simulation(
-                            scenarioDuration = 30,
+                            scenarioDuration = 60,
                             customersPerHour = 50,
                             processingTimePerCustomer = 6,
-                            tellerCount = 16
+                            tellerCount = 3
             ).also {
                 it.frames.forEach(::println)
             }
@@ -59,6 +59,8 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
     val servingNumberFx = SimpleIntegerProperty(0)
     val waitingNumberFx = SimpleIntegerProperty(0)
     val maxWaitingNumberFx = SimpleIntegerProperty(0)
+    val customersArrivedFx = SimpleIntegerProperty(0)
+    val customersServedFx = SimpleIntegerProperty(0)
     val maxWaitingTimeFx = SimpleIntegerProperty(0)
     val avgWaitingTimeFx = SimpleIntegerProperty(0)
 
@@ -99,6 +101,12 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
                 }
             }
             fieldset("PERFORMANCE") {
+                field("CUSTOMERS ARRIVED CT") {
+                    label(customersArrivedFx)
+                }
+                field("CUSTOMERS SERVED CT") {
+                    label(customersServedFx)
+                }
                 field("MAX WAITING CT") {
                     label(maxWaitingNumberFx)
                 }
@@ -123,6 +131,8 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
                     keyvalue(servingNumberFx, frame.servingCustomers.count())
                     keyvalue(waitingNumberFx, frame.waitingCustomers.count())
                     keyvalue(arrivingNumberFx, frame.arrivingCustomers.count())
+                    keyvalue(customersArrivedFx, frame.traverseBackwards.flatMap { it.arrivingCustomers.asSequence() }.distinct().count() )
+                    keyvalue(customersServedFx, frame.traverseBackwards.flatMap { it.servingCustomers.asSequence() }.distinct().count() )
                     keyvalue(maxWaitingNumberFx, frame.traverseBackwards.map { it.waitingCustomers.count() }.max()?:0)
                     keyvalue(maxWaitingTimeFx, frame.traverseBackwards.flatMap { it.servingCustomerWaitTimes.values.map { it }.asSequence() }.max()?:0)
                     keyvalue(avgWaitingTimeFx, frame.traverseBackwards.flatMap { it.servingCustomerWaitTimes.entries.asSequence() }.distinctBy { it.key }.map { it.value }.average())
