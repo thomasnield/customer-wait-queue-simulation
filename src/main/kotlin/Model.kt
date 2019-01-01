@@ -5,9 +5,9 @@ fun main(args: Array<String>) {
 
     Simulation(
             scenarioDuration = 120,
-            customersPerHour = 30,
+            customersPerHour = 20,
             processingTimePerCustomer = 5,
-            tellerCount = 3
+            tellerCount = 7
     ).frames.forEach { println(it) }
 
 }
@@ -79,7 +79,7 @@ class Frame(val minute: Int, val previousFrame: Frame? = null, val simulation: S
     val movingCustomers by lazy {
         previousFrame?.servingCustomers?.let { prevServing ->
             servingCustomers.filter { it !in prevServing }
-        }?: listOf()
+        }?: servingCustomers
     }
 
     // track how long each serving customer has been delayed

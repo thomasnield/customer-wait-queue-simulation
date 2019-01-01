@@ -37,10 +37,10 @@ class AnimationView: View() {
         center = pane {
 
             val simulation = Simulation(
-                            scenarioDuration = 120,
-                            customersPerHour = 50,
+                            scenarioDuration = 30,
+                            customersPerHour = 200,
                             processingTimePerCustomer = 6,
-                            tellerCount = 3
+                            tellerCount = 4
             ).also {
                 it.frames.forEach(::println)
             }
@@ -139,11 +139,12 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
             // handle customer arrivals
             frame.arrivingCustomers.asSequence()
                     .mapIndexed { index, customer ->
-                        customerFxCache.computeIfAbsent(customer.id) { CustomerFX(customer, queueSize++, this) }
-                               .also {
-                                   pane += it
-                                   it.entrance()
-                               }
+                        customerFxCache.computeIfAbsent(customer.id) {
+                            CustomerFX(customer, queueSize++, this).also {
+                                pane += it
+                                it.entrance()
+                            }
+                        }
                     }.toList()
 
             val customersToMove = frame.movingCustomers.asSequence()
@@ -192,16 +193,13 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
 
     fun moveUpQueue() {
         if (currentIndex > 0) currentIndex--
-        animateQueueIndexChange()
-    }
-
-    fun animateQueueIndexChange() {
         simulationFX.animationQueue += timeline(false) {
-            keyframe(300.millis) {
+            keyframe(if (currentIndex > 3) 50.millis else 300.millis) {
                 keyvalue(centerXProperty(), queueStartX + (currentIndex * 24.0))
             }
         }
     }
+
     fun moveToDesk(tellerFX: TellerFX) {
         currentIndex--
         currentTeller = tellerFX
@@ -209,8 +207,8 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
 
         simulationFX.animationQueue += timeline(false) {
             keyframe(500.millis) {
-                keyvalue(centerXProperty(), (currentTeller?.x?:0.0) + (deskWidth*.5))
-                keyvalue(centerYProperty(), (currentTeller?.y?:0.0) + (deskHeight * 1.25))
+                keyvalue(centerXProperty(), (tellerFX.x) + (deskWidth*.5))
+                keyvalue(centerYProperty(), (tellerFX.y) + (deskHeight * 1.25))
             }
         }
 
