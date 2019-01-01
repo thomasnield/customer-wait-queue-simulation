@@ -8,7 +8,7 @@ fun main(args: Array<String>) {
             customersPerHour = 30,
             processingTimePerCustomer = 5,
             tellerCount = 3
-    ).execute().forEach { println(it) }
+    ).frames.forEach { println(it) }
 
 }
 
@@ -17,16 +17,15 @@ class Simulation(val scenarioDuration: Int, customersPerHour: Int, processingTim
     val arrivalDistribution = Poisson(customersPerHour.toDouble() / 60.0) // convert from hours to minutes
     val processingDistribution  = Poisson(processingTimePerCustomer.toDouble())
 
-    fun execute(): List<Frame> {
+    val frames by lazy {
         var lastFrame: Frame? = null
 
-        return (1..(scenarioDuration))
+        (1..(scenarioDuration))
                 .map {
                     val frm = Frame(it, lastFrame, this)
                     lastFrame = frm
                     frm
                 }
-                .toList()
     }
 }
 
@@ -81,12 +80,15 @@ class Frame(val minute: Int, val previousFrame: Frame? = null, val simulation: S
         servingCustomers.map { cust ->
             cust.id to traverseBackwards.count { cust in it.waitingCustomers}
         }.toMap()
-
     }
 
     val waitingCustomers by lazy  { carryOverWaitingCustomers.plus(arrivingCustomers).minus(servingCustomers) }
 
-
+    val departingCustomers by lazy {
+        previousFrame?.let{ prevFrame ->
+            prevFrame.servingCustomers.asSequence().filter { it !in servingCustomers }.toList()
+        }?: listOf()
+    }
     override fun toString() = let {
         "Frame(minute=${it.minute} arriving=${it.arrivingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} " +
                 "serving=${it.servingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} " +
