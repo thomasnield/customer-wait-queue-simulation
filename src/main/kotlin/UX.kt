@@ -38,9 +38,9 @@ class AnimationView: View() {
 
             val simulation = Simulation(
                             scenarioDuration = 30,
-                            customersPerHour = 200,
+                            customersPerHour = 50,
                             processingTimePerCustomer = 6,
-                            tellerCount = 4
+                            tellerCount = 16
             ).also {
                 it.frames.forEach(::println)
             }
