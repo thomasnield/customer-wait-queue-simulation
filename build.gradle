@@ -1,6 +1,6 @@
 
 buildscript {
-    ext.kotlin_version = '1.2.31'
+    ext.kotlin_version = '1.3.0'
 
     repositories {
             mavenCentral()
@@ -20,13 +20,11 @@ apply plugin: 'maven'
 apply plugin: 'maven'
 
 
-
 repositories {
     mavenCentral()
     maven { url 'https://jitpack.io' }
 
 }
-
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
@@ -35,7 +33,7 @@ dependencies {
     implementation 'com.github.optimatika:okAlgo:06e7e8'
     implementation 'no.tornado:tornadofx:1.7.18'
     compile 'org.nield:kotlin-statistics:1.2.1'
-
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.1.0'
     compile 'junit:junit:4.12'
 }
 compileKotlin {
