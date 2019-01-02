@@ -1,79 +1,62 @@
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.sumByDouble
-import kotlinx.coroutines.coroutineScope
+import org.ojalgo.random.Exponential
 import org.ojalgo.random.Normal
-import org.ojalgo.random.Poisson
 import org.ojalgo.random.RandomNumber
 import java.lang.Double.max
 
-data class CustomerModel(val id: Int, val arrivalTime: Double)
+data class ArrivedCustomer(val id: Int, val arrivalTime: Double)
 
-data class ServedCustomerModel(val customer: CustomerModel, val serverID: Int, val servedTime: Double) {
-    val waitTime get() = servedTime - customer.arrivalTime
+data class ServedCustomer(val customer: ArrivedCustomer, val serverID: Int, val servedAtTime: Double) {
+    val waitTime get() = servedAtTime - customer.arrivalTime
+
+    override fun toString(): String {
+        return "ServedCustomer(customer=$customer, serverID=$serverID, servedAtTime=$servedAtTime, waitTime=$waitTime)"
+    }
 }
 
 
-class CustomerQueue(val serverNum: Int, val serveTime: RandomNumber, val scope: CoroutineScope) {
+class CustomerQueue(val serverNum: Int, val serveTime: RandomNumber) {
 
-    //private val arriveChannel = Channel<CustomerModel>(Channel.UNLIMITED)
-    val servedChannel: Channel<ServedCustomerModel> = Channel(Channel.UNLIMITED)
+    val servedChannel = mutableListOf<ServedCustomer>()
 
     val servers = (0 until serverNum).map { Server(it) }
 
     inner class Server(val id: Int) {
-        val channel = Channel<CustomerModel>(Channel.RENDEZVOUS)
         var time = 0.0
-        suspend fun send(customer: CustomerModel) {
+
+        fun receiveCustomer(customer: ArrivedCustomer) {
             // selecting arrival time if it is larger than server freeing time
             time = max(time, customer.arrivalTime)
             //Send result to output channel
-            servedChannel.send(ServedCustomerModel(customer, id, time))
+            servedChannel.add(ServedCustomer(customer, id, time))
             //Advance time after customer is served
             time += max(serveTime.get(), 0.0)
         }
-
     }
 
-    suspend fun send(customer: CustomerModel) {
-        //Select a server that is freed first. There could be some bugs with parallel computations here
-        servers.minBy { it.time }!!.send(customer)
+    fun receiveCustomer(customer: ArrivedCustomer) {
+        servers.minBy { it.time }!!.receiveCustomer(customer)
     }
 
-    fun close() {
-        servedChannel.close()
-    }
 }
 
-suspend fun main(args: Array<String>) {
+fun main(args: Array<String>) {
     val serveTimeDistribution = Normal(6.0, 4.0)
-    val arrivalTimeDifDistribution = Poisson(50.0 / 60.0)
-    val customerNum = 1000
+    val nextArrivalTimeLapseDistribution = Exponential(10.0 / 60.0)
+    val numberOfCustomers = 10
 
-    coroutineScope {
-        val queue: CustomerQueue = CustomerQueue(6, serveTimeDistribution, this)
-        var arrivalTime = 0.0
-        (0 until customerNum).forEach { id ->
-            arrivalTime += arrivalTimeDifDistribution.get()
-            val customer = CustomerModel(id, arrivalTime)
-            queue.send(customer)
-        }
-        queue.close()
+    val queue = CustomerQueue(1, serveTimeDistribution)
+    var arrivalTime = 0.0
 
-//        for (served in queue.servedChannel) {
-//          println(served)
-//        }
-
-        val averageWaitTime = queue.servedChannel.sumByDouble { it.waitTime } / customerNum
-        println("Average wait time is $averageWaitTime")
-
-//        val minutes = produce<List<ServedCustomerModel>> {
-//            var time = 0.0
-//            while (!queue.servedChannel.isClosedForReceive) {
-//                time += 1.0
-//                send(queue.servedChannel.takeWhile { it.servedTime < time }.toList())
-//            }
-//        }
-
+    (0 until numberOfCustomers).forEach { id ->
+        arrivalTime += nextArrivalTimeLapseDistribution.get().also { println("LAPSE: $it")}
+        val customer = ArrivedCustomer(id, arrivalTime)
+        queue.receiveCustomer(customer)
     }
+
+    for (served in queue.servedChannel) {
+        println(served)
+    }
+
+    val averageWaitTime = queue.servedChannel.sumByDouble { it.waitTime } / numberOfCustomers
+    println("Average wait time is $averageWaitTime")
 }

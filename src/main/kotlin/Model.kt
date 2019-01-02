@@ -1,30 +1,6 @@
 import org.nield.kotlinstatistics.standardDeviation
 import org.ojalgo.random.Poisson
 
-fun main(args: Array<String>) {
-
-    (3..8).asSequence()
-            .map { tellerCount ->
-                (0..100).asSequence()
-                        .map {
-                            Simulation(
-                                    scenarioDuration = 60,
-                                    customersPerHour = 50,
-                                    processingTimePerCustomer = 6,
-                                    tellerCount = tellerCount
-                            )
-                        }.toList()
-            }.forEach {
-                println(
-                        "tellerCount=${it.first().tellerCount} " +
-                                "arrivalCount=${it.map { it.customerArrivalCount }.average()} " +
-                                "servicedCount=${it.map { it.customersServedCount }.average()} " +
-                                "avgWaitTime=${it.asSequence().flatMap { it.waitTimes }.average() } " +
-                                "stdDevWaitTime=${it.asSequence().flatMap { it.waitTimes }.standardDeviation() }"
-                )
-            }
-}
-
 
 class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val processingTimePerCustomer: Int, val tellerCount: Int) {
 
