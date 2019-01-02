@@ -38,9 +38,9 @@ class AnimationView: View() {
 
             val simulation = Simulation(
                             scenarioDuration = 60,
-                            customersPerHour = 50,
+                            customersPerHour = 100,
                             processingTimePerCustomer = 6,
-                            tellerCount = 3
+                            tellerCount = 7
             ).also {
                 it.frames.forEach(::println)
             }
@@ -138,11 +138,16 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
                     keyvalue(avgWaitingTimeFx, frame.traverseBackwards.flatMap { it.servingCustomerWaitTimes.entries.asSequence() }.distinctBy { it.key }.map { it.value }.average())
                 }
             }
+            val changeMovements = timeline(play=false) { }
+            val queueMovements = timeline(play=false) { }
+            val leaveMovements = timeline(play=false) { }
+            val arrivalMovements = timeline(play=false) { }
+
             // handle customers leaving
             frame.departingCustomers.asSequence()
                     .map { customerFxCache[it.id]!! }
                     .forEach {
-                        it.leave()
+                        it.leave(leaveMovements)
                         customerFxCache.remove(it.customer.id)
                     }
 
@@ -152,7 +157,7 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
                         customerFxCache.computeIfAbsent(customer.id) {
                             CustomerFX(customer, queueSize++, this).also {
                                 pane += it
-                                it.entrance()
+                                it.entrance(arrivalMovements)
                             }
                         }
                     }.toList()
@@ -161,19 +166,22 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
                     .map { customerFxCache[it.id]!! }
                     .toList()
 
-            // arriving customers who are immediately served go straight to desk
+            // handle customers moving to desk
             customersToMove.forEach { movingCustomer ->
-
-                movingCustomer.moveToDesk(desks.first { it.currentCustomerFX == null })
+                movingCustomer.moveToDesk(desks.first { it.currentCustomerFX == null }, changeMovements)
                 queueSize--
-
-                customerFxCache.values.asSequence()
-                        .filter { it.currentTeller == null }
-                        .forEach {
-                            it.moveUpQueue()
-                        }
             }
 
+            frame.waitingCustomers.asSequence()
+                    .map { customerFxCache[it.id]!! }
+                    .forEachIndexed { index, customerFX ->
+                        customerFX.moveToPosition(index, queueMovements)
+                    }
+
+            animationQueue += arrivalMovements
+            animationQueue += leaveMovements
+            animationQueue += changeMovements
+            animationQueue += queueMovements
         }
         animationQueue.play()
 
@@ -192,46 +200,43 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
         opacity = 0.0
     }
 
-    fun entrance() {
-        simulationFX.animationQueue += timeline(false) {
-            keyframe(500.millis) {
+    fun entrance(timeline: Timeline) {
+        timeline.keyframe(500.millis) {
                 keyvalue(centerXProperty(), queueStartX + (currentIndex * 24.0))
                 keyvalue(opacityProperty(),1.0)
             }
+    }
+    fun moveToPosition(index: Int, timeline: Timeline) {
+        timeline.keyframe(300.millis) {
+            keyvalue(centerXProperty(), queueStartX + (index * 24.0))
+            keyvalue(centerYProperty(),  edgeTop + lobbyHeight)
         }
     }
 
-    fun moveUpQueue() {
+    fun moveUpQueue(timeline: Timeline) {
         if (currentIndex > 0) currentIndex--
-        simulationFX.animationQueue += timeline(false) {
-            keyframe(if (currentIndex > 3) 50.millis else 300.millis) {
+            timeline.keyframe(300.millis) {
                 keyvalue(centerXProperty(), queueStartX + (currentIndex * 24.0))
+                keyvalue(centerYProperty(),  edgeTop + lobbyHeight)
             }
-        }
     }
 
-    fun moveToDesk(tellerFX: TellerFX) {
-        currentIndex--
+    fun moveToDesk(tellerFX: TellerFX, timeline: Timeline) {
         currentTeller = tellerFX
         tellerFX.currentCustomerFX = this
 
-        simulationFX.animationQueue += timeline(false) {
-            keyframe(500.millis) {
-                keyvalue(centerXProperty(), (tellerFX.x) + (deskWidth*.5))
-                keyvalue(centerYProperty(), (tellerFX.y) + (deskHeight * 1.25))
-            }
+        timeline.keyframe(500.millis) {
+            keyvalue(centerXProperty(), (tellerFX.x) + (deskWidth * .5))
+            keyvalue(centerYProperty(), (tellerFX.y) + (deskHeight * 1.25))
         }
-
     }
 
-    fun leave() {
-        simulationFX.animationQueue += timeline(play=false)  {
-            keyframe(500.millis) {
+    fun leave(timeline: Timeline) {
+        timeline.keyframe(500.millis) {
                 keyvalue(centerYProperty(), (currentTeller?.y?:0.0) + 60.0)
                 keyvalue(centerXProperty(), (currentTeller?.x?:0.0) + if (ThreadLocalRandom.current().nextInt(0,1) == 1) 20.0 else -20.0)
                 keyvalue(opacityProperty(), 0.0)
             }
-        }
         currentTeller?.currentCustomerFX = null
     }
 }
