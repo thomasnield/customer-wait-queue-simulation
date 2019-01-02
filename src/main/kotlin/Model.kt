@@ -114,9 +114,7 @@ class Frame(val minute: Int, val previousFrame: Frame? = null, val simulation: S
     val waitingCustomers by lazy  { carryOverWaitingCustomers.plus(arrivingCustomers).minus(servingCustomers) }
 
     val departingCustomers by lazy {
-        previousFrame?.let{ prevFrame ->
-            prevFrame.servingCustomers.asSequence().filter { it !in servingCustomers }.toList()
-        }?: listOf()
+        previousFrame?.servingCustomers?.asSequence()?.filter { it !in servingCustomers }?.toList() ?: listOf()
     }
     override fun toString() = let {
         "Frame(minute=${it.minute} arriving=${it.arrivingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} " +
