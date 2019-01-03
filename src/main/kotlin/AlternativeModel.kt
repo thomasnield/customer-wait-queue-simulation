@@ -44,12 +44,14 @@ class CustomerQueue(val serverNum: Int, val serveTime: RandomNumber) {
 
 fun main(args: Array<String>) {
 
+    // parameters
     val serveTimeDistribution = Normal(6.0, 4.0)
     val nextArrivalTimeLapseDistribution = Exponential(50.0 / 60.0)
-
+    val numberOfServers = 3
     val numberOfCustomers = 10
 
-    val queue = CustomerQueue(3, serveTimeDistribution)
+    // execution
+    val queue = CustomerQueue(numberOfServers, serveTimeDistribution)
     var arrivalTime = 0.0
 
     (0 until numberOfCustomers).forEach { id ->
