@@ -29,7 +29,7 @@ class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val proce
 
 
 /**
- * A Customer assigns its own ID and processing time
+ * A Customer assigns its own ID and processing lapsedTime
  */
 class Customer(val arrivalFrame: Frame) {
 

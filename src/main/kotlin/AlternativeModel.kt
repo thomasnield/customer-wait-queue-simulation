@@ -5,58 +5,63 @@ import java.lang.Double.max
 
 data class ArrivedCustomer(val id: Int, val arrivalTime: Double)
 
-data class ServedCustomer(val customer: ArrivedCustomer, val serverID: Int, val servedAtTime: Double) {
+data class ServedCustomer(val customer: ArrivedCustomer, val serverID: Int, val servedAtTime: Double, val serveTime: Double) {
     val waitTime get() = servedAtTime - customer.arrivalTime
+    val doneAtTime get() = servedAtTime + serveTime
 
     override fun toString(): String {
-        return "ServedCustomer(customer=$customer, serverID=$serverID, servedAtTime=$servedAtTime, waitTime=$waitTime)"
+        return "ServedCustomer(customer=$customer, serverId=$serverID, servedAtTime=$servedAtTime, waitTime=$waitTime, serveTime=$serveTime, doneAtTime=$doneAtTime)"
     }
 }
 
 
 class CustomerQueue(val serverNum: Int, val serveTime: RandomNumber) {
 
-    val servedChannel = mutableListOf<ServedCustomer>()
+    val servedCustomers = mutableListOf<ServedCustomer>()
 
     val servers = (0 until serverNum).map { Server(it) }
 
     inner class Server(val id: Int) {
-        var time = 0.0
+        var lapsedTime = 0.0 // lapsed time for this server
 
         fun receiveCustomer(customer: ArrivedCustomer) {
-            // selecting arrival time if it is larger than server freeing time
-            time = max(time, customer.arrivalTime)
+
+            val serveTime = max(serveTime.get(), 0.0)
+            // selecting arrival lapsedTime if it is larger than server freeing lapsedTime
+            lapsedTime = max(lapsedTime, customer.arrivalTime)
             //Send result to output channel
-            servedChannel.add(ServedCustomer(customer, id, time))
-            //Advance time after customer is served
-            time += max(serveTime.get(), 0.0)
+            servedCustomers.add(ServedCustomer(customer, id, lapsedTime, serveTime))
+            //Advance lapsedTime after customer is served
+            lapsedTime += serveTime
         }
     }
 
     fun receiveCustomer(customer: ArrivedCustomer) {
-        servers.minBy { it.time }!!.receiveCustomer(customer)
+        servers.minBy { it.lapsedTime }!!.receiveCustomer(customer)
     }
 
 }
 
 fun main(args: Array<String>) {
+
     val serveTimeDistribution = Normal(6.0, 4.0)
-    val nextArrivalTimeLapseDistribution = Exponential(10.0 / 60.0)
+    val nextArrivalTimeLapseDistribution = Exponential(50.0 / 60.0)
+
     val numberOfCustomers = 10
 
-    val queue = CustomerQueue(1, serveTimeDistribution)
+    val queue = CustomerQueue(3, serveTimeDistribution)
     var arrivalTime = 0.0
 
     (0 until numberOfCustomers).forEach { id ->
-        arrivalTime += nextArrivalTimeLapseDistribution.get().also { println("LAPSE: $it")}
+        arrivalTime += nextArrivalTimeLapseDistribution.get()
         val customer = ArrivedCustomer(id, arrivalTime)
         queue.receiveCustomer(customer)
     }
 
-    for (served in queue.servedChannel) {
+    for (served in queue.servedCustomers) {
         println(served)
     }
 
-    val averageWaitTime = queue.servedChannel.sumByDouble { it.waitTime } / numberOfCustomers
-    println("Average wait time is $averageWaitTime")
+    val averageWaitTime = queue.servedCustomers.sumByDouble { it.waitTime } / numberOfCustomers
+    println("Average wait lapsedTime is $averageWaitTime")
 }
