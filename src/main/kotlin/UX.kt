@@ -41,7 +41,7 @@ class AnimationView: View() {
                             scenarioDuration = 60,
                             customersPerHour = 100,
                             processingTimePerCustomer = 6,
-                            tellerCount = 7
+                            tellerCount = 3
             ).also {
                 it.frames.forEach(::println)
             }
