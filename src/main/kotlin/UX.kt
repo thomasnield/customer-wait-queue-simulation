@@ -25,6 +25,7 @@ val deskHeight = 30.0
 val queueStartX =  edgeLeft + 400.0
 
 operator fun SequentialTransition.plusAssign(timeline: Timeline) { children.add(timeline) }
+operator fun SequentialTransition.plusAssign(timelines: Iterable<Timeline>) { timelines.forEach { children.add(it) }  }
 
 
 class AnimationView: View() {
@@ -139,7 +140,6 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
                 }
             }
             val changeMovements = timeline(play=false) { }
-            val queueMovements = timeline(play=false) { }
             val leaveMovements = timeline(play=false) { }
             val arrivalMovements = timeline(play=false) { }
 
@@ -172,16 +172,19 @@ class SimulationFX(val simulation: Simulation, val pane: Pane) {
                 queueSize--
             }
 
-            frame.waitingCustomers.asSequence()
+            val queueMovements = frame.waitingCustomers.asSequence()
                     .map { customerFxCache[it.id]!! }
-                    .forEachIndexed { index, customerFX ->
-                        customerFX.moveToPosition(index, queueMovements)
-                    }
+                    .mapIndexed { index, customerFX ->
+                        timeline(play=false) {
+                            customerFX.moveToPosition(index, this)
+                        }
+                    }.toList()
 
             animationQueue += arrivalMovements
             animationQueue += leaveMovements
             animationQueue += changeMovements
             animationQueue += queueMovements
+
         }
         animationQueue.play()
 
@@ -207,19 +210,12 @@ class CustomerFX(val customer: Customer, val startingIndex: Int, val simulationF
             }
     }
     fun moveToPosition(index: Int, timeline: Timeline) {
-        timeline.keyframe(300.millis) {
+        timeline.keyframe(if (index <= 3) 300.millis else 100.millis) {
             keyvalue(centerXProperty(), queueStartX + (index * 24.0))
             keyvalue(centerYProperty(),  edgeTop + lobbyHeight)
         }
     }
 
-    fun moveUpQueue(timeline: Timeline) {
-        if (currentIndex > 0) currentIndex--
-            timeline.keyframe(300.millis) {
-                keyvalue(centerXProperty(), queueStartX + (currentIndex * 24.0))
-                keyvalue(centerYProperty(),  edgeTop + lobbyHeight)
-            }
-    }
 
     fun moveToDesk(tellerFX: TellerFX, timeline: Timeline) {
         currentTeller = tellerFX
