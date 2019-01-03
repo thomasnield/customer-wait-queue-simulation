@@ -1,5 +1,6 @@
 import org.ojalgo.random.Normal
 import org.ojalgo.random.Poisson
+import kotlin.math.max
 
 
 class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val processingTimePerCustomer: Int, val tellerCount: Int) {
@@ -34,7 +35,7 @@ class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val proce
 class Customer(val arrivalFrame: Frame) {
 
     val id: Int = customerIndexer++
-    val processingTime: Int = arrivalFrame.simulation.processingDistribution.get().toInt()
+    val processingTime: Int = max(0, arrivalFrame.simulation.processingDistribution.get().toInt())
 
     companion object {
         private var customerIndexer = 0
