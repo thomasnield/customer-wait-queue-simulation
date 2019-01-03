@@ -1,11 +1,12 @@
 import org.ojalgo.random.Exponential
+import org.ojalgo.random.Normal
 import org.ojalgo.random.Poisson
 
 
 class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val processingTimePerCustomer: Int, val tellerCount: Int) {
 
     val arrivalDistribution = Poisson(customersPerHour.toDouble() / 60.0) // convert from hours to minutes
-    val processingDistribution  = Exponential(processingTimePerCustomer.toDouble() / 60.0)
+    val processingDistribution  = Normal(6.0, 4.0)
 
     val frames by lazy {
         var lastFrame: Frame? = null
