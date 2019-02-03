@@ -1,5 +1,3 @@
-import org.ojalgo.random.Exponential
-import org.ojalgo.random.Normal
 import org.ojalgo.random.RandomNumber
 import java.lang.Double.max
 
@@ -42,6 +40,27 @@ class CustomerQueue(val serverNum: Int, val serveTime: RandomNumber) {
 
 }
 
+fun executeModel(
+        numberOfServers: Int,
+        numberOfCustomers: Int,
+        serveTimeDistribution: RandomNumber,
+        nextArrivalTimeLapseDistribution: RandomNumber): CustomerQueue {
+
+
+    // execution
+    val queue = CustomerQueue(numberOfServers, serveTimeDistribution)
+    var arrivalTime = 0.0
+
+    (0 until numberOfCustomers).forEach { id ->
+        arrivalTime += nextArrivalTimeLapseDistribution.get()
+        val customer = ArrivedCustomer(id, arrivalTime)
+        queue.receiveCustomer(customer)
+    }
+
+    return queue
+}
+
+/*
 fun main(args: Array<String>) {
 
     // parameters
@@ -67,3 +86,4 @@ fun main(args: Array<String>) {
     val averageWaitTime = queue.servedCustomers.sumByDouble { it.waitTime } / numberOfCustomers
     println("Average wait lapsedTime is $averageWaitTime")
 }
+*/

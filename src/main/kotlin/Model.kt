@@ -3,7 +3,7 @@ import org.ojalgo.random.Poisson
 import kotlin.math.max
 
 
-class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val processingTimePerCustomer: Int, val tellerCount: Int) {
+/*class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val processingTimePerCustomer: Int, val tellerCount: Int) {
 
     val arrivalDistribution = Poisson(customersPerHour.toDouble() / 60.0) // convert from hours to minutes
     val processingDistribution  = Normal(6.0, 4.0)
@@ -29,9 +29,9 @@ class Simulation(val scenarioDuration: Int, val customersPerHour: Int, val proce
 }
 
 
-/**
+*//**
  * A Customer assigns its own ID and processing lapsedTime
- */
+ *//*
 class Customer(val arrivalFrame: Frame) {
 
     val id: Int = customerIndexer++
@@ -98,4 +98,4 @@ class Frame(val minute: Int, val previousFrame: Frame? = null, val simulation: S
                 "serving=${it.servingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")} " +
                 "waiting=${it.waitingCustomers.map { "${it.id}[${it.processingTime}]" }.joinToString(",")})"
     }
-}
+}*/
